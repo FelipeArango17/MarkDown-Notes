@@ -1,4 +1,5 @@
 // Notes MarkDown
+const notes = []; // Almacenamiento
 
 function generateID() {
     const timestamp = Date.now();
@@ -9,8 +10,9 @@ function generateID() {
 
 function createNote(newContent, title) {
     const trimmedContent = newContent.trim();
+
     if (trimmedContent === '') {
-        return 'Error: The content cannot be empty'
+        return null; // No string
     }
 
     const noteID = generateID();
@@ -21,53 +23,74 @@ function createNote(newContent, title) {
     ? `${newContent.slice(0,100)} ...`
     : trimmedContent;
 
-    const noteInfo = `
-        ID: ${noteID} | Title: ${noteTitle} | Content: ${newContent} | Excerpt: ${noteExcerpt}
-        | Created: ${currentTime} | Update: ${currentTime}
-    `;
-
-    return noteInfo;
+    // Devolver objeto
+    return {
+        id: noteID,
+        title: title,
+        content: trimmedContent,
+        excerpt: noteExcerpt,
+        createAt: currentTime,
+        updateAt: currentTime
+    };
 }
 
+// Nueva funcion
+function addNote(content, title) {
+    
+    const note = createNote(content, title);
+    if (!note) {
+        return 'Error: The content cannot be empty';
+    }
+
+    notes.push(note);
+    return 'Note created successfully';
+}
 
 function updateNote(noteID, newContent) {
-    if (noteID === undefined || noteID === null || noteID === "") {
+    if (!noteID) {
         return 'Error: Invalid ID'
     }
 
-    const updateNoteInfo = `
-        ID: ${noteID} | Title: ${noteTitle} | Content: ${newContent} | Excerpt: ${noteExcerpt}
-        | Created: ${currentTime} | Update: ${currentTime}
-    `
-    return updateNoteInfo;
+    const note = note.find(n => n.id === noteID);
 
+    if (!note) {
+        return 'Error: note not found';
+    }
+
+    const trimmedContent = newContent.trim(); 
+
+    if (trimmedContent === '') {
+        return 'Error: The content cannot be empty';
+    }
+
+    note.content = trimmedContent;
+    note.excerpt = trimmedContent.length > 100
+        ? `${trimmedContent.slice(0,100)}...`
+        : trimmedContent;
+
+    note.updatedAt = Date.now();
+
+    return 'Note updated successfully';
 }
 
 function deleteNote(noteID) {
-    if (noteID === undefined || noteID === null || noteID == '') {
+    if (!noteID) {
         return 'Error: Invalid ID';
     }
 
-    const message = `Note with ID: ${noteID}, was deleted successfully`;
-    return message;
+    // findIndex devuelve la posicion, mientras find el objeto
+    const index = notes.findIndex(n => n.id === noteID);
+
+    if (index === -1) {
+        return 'Error: Note not found';
+    }
+
+    // inicio, cantidad
+    notes.splice(index, 1);
+
+    return `Note with ID: ${noteID} was deleted successfully`;
 }
 
 function listNotes() {
-    const message = `Notes retrieved successfully`
-    return message;
+    return notes; // ahora sí devuelve datos reales
 }
-
-// Ejemplo 1: Crear una nota
-console.log('=== CREAR NOTA ===');
-const nota1 = createNote('# Mi primera nota\nEste es el contenido de mi primera nota en Markdown.');
-console.log(nota1);
-
-// Ejemplo 2: Crear nota con título personalizado
-console.log('\n=== CREAR NOTA CON TÍTULO ===');
-const nota2 = createNote('Contenido de la segunda nota', 'Nota Importante');
-console.log(nota2);
-
-// Ejemplo 3: Intentar crear nota vacía (validación)
-console.log('\n=== VALIDACIÓN: NOTA VACÍA ===');
-const notaVacia = createNote('');
-console.log(notaVacia);
