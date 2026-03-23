@@ -333,3 +333,47 @@ function createNotesStore() {
     getNotesCount: getNotesCount,
   };
 }
+
+/**
+ * Guarda las notas en LocalStorage
+ * @param {Array} notes - Array de notas a guardar
+ */
+function saveToStorage(notes) {
+    // Validación para evitar guardar datos inválidos
+    if (notes === undefined || notes === null) {
+        console.error('Invalid data cannot be saved');
+        return;
+    }
+
+    // Convertir el array de objetos a string JSON
+    const notesJSON = JSON.stringify(notes);
+
+    // Guardar en localStorage usando la clave global
+    localStorage.setItem(storageKey, notesJSON);
+}
+
+/**
+ * Carga las notas desde localStorage
+ * @returns {Array} Array de notas o array vacio si no hay datos
+ */
+function loadFromStorage() {
+    // Obtener los datos guardados como string
+    const notesJSON = localStorage.getItem(storageKey);
+
+    // Si no hay datos, retornar array vacío
+    if (notesJSON === null || notesJSON === undefined) {
+        return [];
+    }
+
+    let notes = [];
+
+    // Convertir el string JSON a objeto (array)
+    const parsedNotes = JSON.parse(notesJSON);
+
+    // Validar que realmente sea un array
+    if (Array.isArray(parsedNotes)) {
+        notes = parsedNotes;
+    }
+
+    return notes;
+}
