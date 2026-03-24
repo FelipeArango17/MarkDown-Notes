@@ -71,6 +71,7 @@ function deriveExcerpt(content, maxLen) {
 
 // Clave global para el almacenamiento en localStorage
 const storageKey = 'markdown-notes';
+let currentNoteId = null;
 
 const notes = []; // Almacenamiento
 
@@ -376,4 +377,119 @@ function loadFromStorage() {
     }
 
     return notes;
+}
+
+// Continuacion conexion store con localStorage 
+
+// Muestra el editor y el preview
+function showEditorAndPreview() {
+    const editorSection = document.querySelector('#editor-section');
+    const previewSection = document.querySelector('#preview-section');
+
+    editorSection.style.display = 'flex';
+    previewSection.style.display = 'none';
+}
+
+/**
+ * Renderizar la lista de notas en el DOM
+ * @param {Array} notesList - Array de notas a renderizar
+ */
+function renderNoteList(notesList) {
+  const noteListContainer = document.querySelector('#note-list');
+
+  if (noteListContainer === null) {
+    return;
+  }
+
+  // Limpiar contenedor antes de renderizar
+  noteListContainer.textContent = '';
+
+  // Estado vacío
+  if (!Array.isArray(notesList) || notesList.length === 0) {
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-state';
+    emptyState.textContent = 'No hay notas todavía. Crea tu primera nota.';
+    noteListContainer.appendChild(emptyState);
+    return;
+  }
+
+  // Render de notas
+  notesList.forEach(function (note) {
+    const noteItem = document.createElement('article');
+    noteItem.className = 'note-item';
+    noteItem.dataset.noteId = String(note.id);
+
+    // Marcar nota activa por ID
+    if (currentNoteId !== null && String(note.id) === String(currentNoteId)) {
+      noteItem.classList.add('active');
+    }
+
+    const titleElement = document.createElement('h3');
+    titleElement.className = 'note-title';
+    titleElement.textContent = note.title || deriveTitle(note.content || '');
+
+    const excerptElement = document.createElement('p');
+    excerptElement.className = 'note-excerpt';
+    excerptElement.textContent = note.excerpt || deriveExcerpt(note.content || '', 100);
+
+    const dateElement = document.createElement('small');
+    dateElement.className = 'note-date';
+    const dateValue = note.updatedAt || note.createdAt;
+    dateElement.textContent = dateValue
+      ? new Date(dateValue).toLocaleString()
+      : 'Sin fecha';
+
+    noteItem.appendChild(titleElement);
+    noteItem.appendChild(excerptElement);
+    noteItem.appendChild(dateElement);
+
+    noteListContainer.appendChild(noteItem);
+  });
+}
+
+/**
+ * Renderizar el editor con el contenido de una nota
+ * @param {Object|null} nota - Nota a renderizar o null para el editor vacio
+ */
+function renderNoteEditor(nota) {
+  const editorTextarea =
+    document.querySelector('#note-editor') ||
+    document.querySelector('#note-content') ||
+    document.querySelector('#editor-section textarea');
+
+  if (editorTextarea === null) {
+    return;
+  }
+
+  if (nota === null) {
+    editorTextarea.value = '';
+    return;
+  }
+
+  editorTextarea.value = typeof nota.content === 'string' ? nota.content : '';
+}
+
+/** 
+ * Renderizar el Preview del contenido markdown
+ * @param {String} content - contenido markdown a renderizar
+ */
+function renderMarkdownPreview(content) {
+  const previewContainer =
+    document.querySelector('#preview-content') ||
+    document.querySelector('#markdown-preview') ||
+    document.querySelector('#preview-section');
+
+  if (previewContainer === null) {
+    return;
+  }
+
+  const markdownText = typeof content === 'string' ? content : '';
+
+  if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+    previewContainer.innerHTML = marked.parse(markdownText);
+    return;
+  }
+
+  // Fallback si marked.js no está disponible
+  previewContainer.textContent = markdownText;
 }
