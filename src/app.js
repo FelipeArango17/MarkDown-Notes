@@ -97,7 +97,6 @@ function findNoteByID(noteID) {
  * @param {string} title - Título de la nota (opcional)
  * @returns {Object|null} Objeto de nota o null si hay error
  */
-
 function createNote(content, title) {
     const trimmedContent = content.trim();
 
@@ -174,12 +173,10 @@ function listNotes() {
 
 // Store de notas (Fase 2) 
 // Uso de Closures para encapsular el estado
-
 /**
  * Crea un store para manejar el estado de las notas
  * @returns {Object} Objeto con métodos para interactuar con las notas
  */
-
 function createNotesStore() {
   let notes = [];
 
@@ -340,16 +337,12 @@ function createNotesStore() {
  * @param {Array} notes - Array de notas a guardar
  */
 function saveToStorage(notes) {
-    // Validación para evitar guardar datos inválidos
     if (notes === undefined || notes === null) {
         console.error('Invalid data cannot be saved');
         return;
     }
 
-    // Convertir el array de objetos a string JSON
     const notesJSON = JSON.stringify(notes);
-
-    // Guardar en localStorage usando la clave global
     localStorage.setItem(storageKey, notesJSON);
 }
 
@@ -358,20 +351,15 @@ function saveToStorage(notes) {
  * @returns {Array} Array de notas o array vacio si no hay datos
  */
 function loadFromStorage() {
-    // Obtener los datos guardados como string
     const notesJSON = localStorage.getItem(storageKey);
 
-    // Si no hay datos, retornar array vacío
     if (notesJSON === null || notesJSON === undefined) {
         return [];
     }
 
     let notes = [];
-
-    // Convertir el string JSON a objeto (array)
     const parsedNotes = JSON.parse(notesJSON);
 
-    // Validar que realmente sea un array
     if (Array.isArray(parsedNotes)) {
         notes = parsedNotes;
     }
@@ -379,87 +367,10 @@ function loadFromStorage() {
     return notes;
 }
 
-// Continuacion conexion store con localStorage 
-
-// Muestra el editor y el preview
-function showEditorAndPreview() {
-    const editorSection = document.querySelector('#editor-section');
-    const previewSection = document.querySelector('#preview-section');
-
-    editorSection.style.display = 'flex';
-    previewSection.style.display = 'none';
-}
-
-/**
- * Renderizar la lista de notas en el DOM
- * @param {Array} notesList - Array de notas a renderizar
- */
-function renderNoteList(notesList) {
-  const noteListContainer = document.querySelector('#note-list');
-
-  if (noteListContainer === null) {
-    return;
-  }
-
-  // Limpiar contenedor antes de renderizar
-  noteListContainer.textContent = '';
-
-  // Estado vacío
-  if (!Array.isArray(notesList) || notesList.length === 0) {
-    const emptyState = document.createElement('p');
-    emptyState.className = 'empty-state';
-    emptyState.textContent = 'No hay notas todavía. Crea tu primera nota.';
-    noteListContainer.appendChild(emptyState);
-    return;
-  }
-
-  // Render de notas
-  notesList.forEach(function (note) {
-    const noteItem = document.createElement('article');
-    noteItem.className = 'note-item';
-    noteItem.dataset.noteId = String(note.id);
-
-    // Marcar nota activa por ID
-    if (currentNoteId !== null && String(note.id) === String(currentNoteId)) {
-      noteItem.classList.add('active');
-    }
-
-    const titleElement = document.createElement('h3');
-    titleElement.className = 'note-title';
-    titleElement.textContent = note.title || deriveTitle(note.content || '');
-
-    const excerptElement = document.createElement('p');
-    excerptElement.className = 'note-excerpt';
-    excerptElement.textContent = note.excerpt || deriveExcerpt(note.content || '', 100);
-
-    const dateElement = document.createElement('small');
-    dateElement.className = 'note-date';
-    const dateValue = note.updatedAt || note.createdAt;
-    dateElement.textContent = dateValue
-      ? new Date(dateValue).toLocaleString()
-      : 'Sin fecha';
-
-    noteItem.appendChild(titleElement);
-    noteItem.appendChild(excerptElement);
-    noteItem.appendChild(dateElement);
-
-    noteListContainer.appendChild(noteItem);
-  });
-}
-
-/**
- * Renderizar el editor con el contenido de una nota
- * @param {Object|null} nota - Nota a renderizar o null para el editor vacio
- */
+// Renderizar la nota en editor
 function renderNoteEditor(nota) {
-  const editorTextarea =
-    document.querySelector('#note-editor') ||
-    document.querySelector('#note-content') ||
-    document.querySelector('#editor-section textarea');
-
-  if (editorTextarea === null) {
-    return;
-  }
+  const editorTextarea = document.getElementById('noteEditor');
+  if (!editorTextarea) return;
 
   if (nota === null) {
     editorTextarea.value = '';
@@ -469,19 +380,10 @@ function renderNoteEditor(nota) {
   editorTextarea.value = typeof nota.content === 'string' ? nota.content : '';
 }
 
-/** 
- * Renderizar el Preview del contenido markdown
- * @param {String} content - contenido markdown a renderizar
- */
+// Renderizar preview markdown
 function renderMarkdownPreview(content) {
-  const previewContainer =
-    document.querySelector('#preview-content') ||
-    document.querySelector('#markdown-preview') ||
-    document.querySelector('#preview-section');
-
-  if (previewContainer === null) {
-    return;
-  }
+  const previewContainer = document.getElementById('markdownPreview');
+  if (!previewContainer) return;
 
   const markdownText = typeof content === 'string' ? content : '';
 
@@ -490,6 +392,34 @@ function renderMarkdownPreview(content) {
     return;
   }
 
-  // Fallback si marked.js no está disponible
   previewContainer.textContent = markdownText;
 }
+
+// Nota de ejemplo
+const testNote = {
+    id: 1,
+    title: "Nota de prueba",
+    content: "# Hola Mundo\nEste es un **Markdown** de prueba.",
+    excerpt: "Hola Mundo...",
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+};
+
+// Cargar nota de prueba al editor
+document.getElementById('loadNoteBtn').addEventListener('click', () => {
+    renderNoteEditor(testNote);
+    renderMarkdownPreview(testNote.content);
+});
+
+// Actualizar preview al escribir
+document.getElementById('noteEditor').addEventListener('input', (e) => {
+    renderMarkdownPreview(e.target.value);
+});
+
+// Guardar nota en localStorage
+document.getElementById('saveNoteBtn').addEventListener('click', () => {
+    const content = document.getElementById('noteEditor').value;
+    const note = { ...testNote, content, updatedAt: Date.now() };
+    saveToStorage([note]); // Guardar en LocalStorage
+    alert('Nota guardada!');
+});
