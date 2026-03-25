@@ -1,5 +1,9 @@
 // Notes MarkDown
 
+// Clave global para el almacenamiento en localStorage
+const storageKey = 'markdown-notes';
+let currentNoteId = null;
+
 // Utilidades de Texto
 /**
  * Extrae el título de una nota desde su contenido
@@ -68,10 +72,6 @@ function deriveExcerpt(content, maxLen) {
 
   return excerpt;
 }
-
-// Clave global para el almacenamiento en localStorage
-const storageKey = 'markdown-notes';
-let currentNoteId = null;
 
 const notes = []; // Almacenamiento
 
@@ -367,31 +367,133 @@ function loadFromStorage() {
     return notes;
 }
 
-// Renderizar la nota en editor
-function renderNoteEditor(nota) {
-  const editorTextarea = document.getElementById('noteEditor');
-  if (!editorTextarea) return;
+/**
+ * Muestra el editor y preview
+ */
 
-  if (nota === null) {
+function showEditorAndPreview() {
+  const editorSection = document.querySelector('#editor-section');
+  const previewSection = document.querySelector('#preview-section');
+
+  editorSection.style.display = 'flex';
+  previewSection.style.display = 'flex';
+}
+
+/**
+ * Oculta el editor y el preview
+ */
+
+function hideEditorAndPreview() {
+  const editorSection = document.querySelector('#editor-section');
+  const previewSection = document.querySelector('#preview-section');
+
+  editorSection.style.display = 'none';
+  previewSection.style.display = 'none';
+}
+
+/**
+ * Renderiza la lista de notas en el DOM
+ * @param {Array} notes - Array de notas a renderizar
+ */
+function renderNoteList(notes) {
+  const noteListContainer = document.getElementById('note-list');
+  
+  if (!noteListContainer) return;
+
+  // Limpiar el contenedor antes de renderizar
+  noteListContainer.innerHTML = '';
+
+  // Si la lista está vacía, mostrar mensaje de estado vacío
+  if (!Array.isArray(notes) || notes.length === 0) {
+    const emptyMessage = document.createElement('div');
+    emptyMessage.className = 'empty-state';
+    emptyMessage.innerHTML = '<p>No hay notas aún. ¡Crea una nueva!</p>';
+    noteListContainer.appendChild(emptyMessage);
+    return;
+  }
+
+  // Renderizar cada nota
+  notes.forEach(function (note) {
+    // Crear elemento de nota
+    const noteItem = document.createElement('div');
+    noteItem.className = 'note-item';
+    
+    // Marcar la nota activa comparando con currentNoteId
+    if (note.id === currentNoteId) {
+      noteItem.classList.add('active');
+    }
+
+    // Formato de fecha
+    const date = new Date(note.updatedAt);
+    const dateString = date.toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    // Construir el contenido HTML
+    noteItem.innerHTML = `
+      <div class="note-item-content">
+        <h3 class="note-item-title">${note.title}</h3>
+        <p class="note-item-excerpt">${note.excerpt}</p>
+        <span class="note-item-date">${dateString}</span>
+      </div>
+    `;
+
+    noteListContainer.appendChild(noteItem);
+  });
+}
+
+/**
+ * Renderiza una nota en el editor de texto
+ * @param {Object|null} note - Objeto nota con contenido o null para limpiar
+ */
+function renderNoteEditor(note) {
+  // Seleccionar el textarea del editor usando querySelector
+  const editorTextarea = document.querySelector('#noteEditor');
+  
+  // No romper si el elemento no existe en el DOM
+  if (!editorTextarea) {
+    return;
+  }
+
+  // Si note es null, limpiar el contenido del editor
+  if (note === null) {
     editorTextarea.value = '';
     return;
   }
 
-  editorTextarea.value = typeof nota.content === 'string' ? nota.content : '';
+  // Validar que note.content sea un string antes de asignarlo
+  if (typeof note.content === 'string') {
+    editorTextarea.value = note.content;
+  } else {
+    editorTextarea.value = '';
+  }
 }
 
-// Renderizar preview markdown
+/**
+ * Renderiza markdown en HTML o texto plano en el preview
+ * @param {string} content - Contenido markdown a renderizar
+ */
 function renderMarkdownPreview(content) {
-  const previewContainer = document.getElementById('markdownPreview');
-  if (!previewContainer) return;
+  // Seleccionar el contenedor del preview usando querySelector
+  const previewContainer = document.querySelector('#markdownPreview');
+  
+  // Validar que el elemento exista antes de usarlo
+  if (!previewContainer) {
+    return;
+  }
 
+  // Si content no es un string, usar un string vacío
   const markdownText = typeof content === 'string' ? content : '';
 
+  // Convertir el markdown a HTML usando marked.parse si está disponible
   if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
     previewContainer.innerHTML = marked.parse(markdownText);
     return;
   }
 
+  // Si marked no está disponible, mostrar el contenido como texto plano
   previewContainer.textContent = markdownText;
 }
 
