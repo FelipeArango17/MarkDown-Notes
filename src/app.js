@@ -106,7 +106,9 @@ function createNote(content, title) {
 
     const noteID = generateID();
     const currentTime = Date.now();
-    const noteTitle = title || 'Untitle note';
+    // FIX: usamos deriveTitle para ser consistentes con el resto del store,
+    // en lugar de un título hardcodeado cuando no se pasa uno
+    const noteTitle = title || deriveTitle(content);
 
     // Se genera un resumen corto del contenido
     const noteExcerpt = content.length > 100 
@@ -253,22 +255,24 @@ function createNotesStore() {
     return { success: true, note: { ...noteToUpdate } };
   }
 
+  // FIX: deleteNote ahora retorna { success, message } en lugar de un string,
+  // para que el listener pueda leer result.success correctamente
   function deleteNote(noteID) {
-    if (!noteID) {
-        return 'Error: Invalid ID';
+    if (noteID === undefined || noteID === null) {
+        return { success: false, message: 'ID inválido' };
     }
 
     // findIndex devuelve la posicion, mientras find el objeto
     const index = notes.findIndex(n => n.id === noteID);
 
     if (index === -1) {
-        return 'Error: Note not found';
+        return { success: false, message: 'Nota no encontrada' };
     }
 
     // inicio, cantidad
     notes.splice(index, 1);
 
-    return `Note with ID: ${noteID} was deleted successfully`;
+    return { success: true, message: `Nota con ID: ${noteID} eliminada exitosamente` };
   }
 
   function searchNotes(query) {
@@ -367,6 +371,164 @@ function loadFromStorage() {
     return notes;
 }
 
+// FIX: se agrega createPersistentNotesStore que es la función que usa initializeApp.
+// Extiende createNotesStore añadiendo carga y guardado automático en localStorage
+function createPersistentNotesStore() {
+  let notes = loadFromStorage();
+
+  function addNote(content, title) {
+    if (content === undefined || content === null || content.trim() === '') {
+      return { success: false, message: 'El contenido no puede estar vacío' };
+    }
+
+    const newNote = createNote(content, title);
+
+    if (newNote === null) {
+      return { success: false, message: 'Error al crear la nota' };
+    }
+
+    notes.push(newNote);
+    saveToStorage(notes);
+
+    return { success: true, note: newNote };
+  }
+
+  function getAllNotes() {
+    const notesCopy = notes.map(function (note) {
+      return { ...note };
+    });
+    return notesCopy;
+  }
+
+  function getNoteById(noteId) {
+    const foundNote = notes.find(function (note) {
+      return note.id === noteId;
+    });
+
+    if (foundNote === undefined) {
+      return null;
+    }
+
+    return { ...foundNote };
+  }
+
+  function updateNote(noteId, updates) {
+    if (noteId === undefined || noteId === null) {
+      return { success: false, message: 'ID inválido' };
+    }
+
+    const noteToUpdate = notes.find(function (note) {
+      return note.id === noteId;
+    });
+
+    if (noteToUpdate === undefined) {
+      return { success: false, message: 'Nota no encontrada' };
+    }
+
+    if (updates.content !== undefined) {
+      const trimmedContent = updates.content.trim();
+
+      if (trimmedContent === '') {
+        return { success: false, message: 'El contenido no puede estar vacío' };
+      }
+
+      noteToUpdate.content = updates.content;
+      noteToUpdate.title = deriveTitle(updates.content);
+      noteToUpdate.excerpt = deriveExcerpt(updates.content, 100);
+    }
+
+    if (updates.title !== undefined && updates.title !== '') {
+      noteToUpdate.title = updates.title;
+    }
+
+    if (updates.favorite !== undefined) {
+      noteToUpdate.favorite = updates.favorite;
+    }
+
+    noteToUpdate.updatedAt = Date.now();
+    saveToStorage(notes);
+
+    return { success: true, note: { ...noteToUpdate } };
+  }
+
+  function deleteNote(noteID) {
+    if (noteID === undefined || noteID === null) {
+      return { success: false, message: 'ID inválido' };
+    }
+
+    const index = notes.findIndex(n => n.id === noteID);
+
+    if (index === -1) {
+      return { success: false, message: 'Nota no encontrada' };
+    }
+
+    notes.splice(index, 1);
+    saveToStorage(notes);
+
+    return { success: true, message: `Nota con ID: ${noteID} eliminada exitosamente` };
+  }
+
+  function searchNotes(query) {
+    if (query === undefined || query === null || query.trim() === '') {
+      return [];
+    }
+
+    const normalizedQuery = query.toLowerCase().trim();
+
+    const results = notes.filter(function (note) {
+      const normalizedTitle = note.title.toLowerCase();
+      const normalizedContent = note.content.toLowerCase();
+
+      const matchesTitle = normalizedTitle.includes(normalizedQuery);
+      const matchesContent = normalizedContent.includes(normalizedQuery);
+
+      return matchesTitle || matchesContent;
+    });
+
+    return results.map(function (note) {
+      return { ...note };
+    });
+  }
+
+  function getNotesOrderedByDate() {
+    const notesCopy = notes.map(function (note) {
+      return { ...note };
+    });
+
+    notesCopy.sort(function (a, b) {
+      return b.updatedAt - a.updatedAt;
+    });
+
+    return notesCopy;
+  }
+
+  function getFavoriteNotes() {
+    const favorites = notes.filter(function (note) {
+      return note.favorite === true;
+    });
+
+    return favorites.map(function (note) {
+      return { ...note };
+    });
+  }
+
+  function getNotesCount() {
+    return notes.length;
+  }
+
+  return {
+    addNote: addNote,
+    getAllNotes: getAllNotes,
+    getNoteById: getNoteById,
+    updateNote: updateNote,
+    deleteNote: deleteNote,
+    searchNotes: searchNotes,
+    getNotesOrderedByDate: getNotesOrderedByDate,
+    getFavoriteNotes: getFavoriteNotes,
+    getNotesCount: getNotesCount,
+  };
+}
+
 /**
  * Muestra el editor y preview
  */
@@ -415,6 +577,7 @@ function renderNoteList(notes) {
     // Crear elemento de nota
     const noteItem = document.createElement('div');
     noteItem.className = 'note-item';
+    noteItem.dataset.id = note.id;
     
     // Marcar la nota activa comparando con currentNoteId
     if (note.id === currentNoteId) {
@@ -447,17 +610,21 @@ function renderNoteList(notes) {
  * @param {Object|null} note - Objeto nota con contenido o null para limpiar
  */
 function renderNoteEditor(note) {
-  // Seleccionar el textarea del editor usando querySelector
-  const editorTextarea = document.querySelector('#noteEditor');
+  // FIX: el ID se unifica con el que existe en el HTML (#editor-textarea)
+  const editorTextarea = document.querySelector('#editor-textarea');
   
   // No romper si el elemento no existe en el DOM
   if (!editorTextarea) {
     return;
   }
 
-  // Si note es null, limpiar el contenido del editor
+  showEditorAndPreview();
+
+  // Si note es null, limpiar el contenido del editor y actualizar currentNoteId
   if (note === null) {
     editorTextarea.value = '';
+    currentNoteId = null;
+    renderMarkdownPreview('');
     return;
   }
 
@@ -467,6 +634,9 @@ function renderNoteEditor(note) {
   } else {
     editorTextarea.value = '';
   }
+
+  currentNoteId = note.id;
+  renderMarkdownPreview(editorTextarea.value);
 }
 
 /**
@@ -474,8 +644,8 @@ function renderNoteEditor(note) {
  * @param {string} content - Contenido markdown a renderizar
  */
 function renderMarkdownPreview(content) {
-  // Seleccionar el contenedor del preview usando querySelector
-  const previewContainer = document.querySelector('#markdownPreview');
+  // FIX: el ID se unifica con el que existe en el HTML (#preview-container)
+  const previewContainer = document.querySelector('#preview-container');
   
   // Validar que el elemento exista antes de usarlo
   if (!previewContainer) {
@@ -485,51 +655,22 @@ function renderMarkdownPreview(content) {
   // Si content no es un string, usar un string vacío
   const markdownText = typeof content === 'string' ? content : '';
 
-  // Convertir el markdown a HTML usando marked.parse si está disponible
-  if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
-    previewContainer.innerHTML = marked.parse(markdownText);
+  // Convertir el markdown a HTML usando markdownit si está disponible
+  if (typeof window.markdownit !== 'undefined') {
+    const md = window.markdownit();
+    previewContainer.innerHTML = md.render(markdownText);
     return;
   }
 
-  // Si marked no está disponible, mostrar el contenido como texto plano
+  // Si markdownit no está disponible, mostrar el contenido como texto plano
   previewContainer.textContent = markdownText;
 }
-
-// Nota de ejemplo
-const testNote = {
-    id: 1,
-    title: "Nota de prueba",
-    content: "# Hola Mundo\nEste es un **Markdown** de prueba.",
-    excerpt: "Hola Mundo...",
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-};
-
-// Cargar nota de prueba al editor
-document.getElementById('loadNoteBtn').addEventListener('click', () => {
-    renderNoteEditor(testNote);
-    renderMarkdownPreview(testNote.content);
-});
-
-// Actualizar preview al escribir
-document.getElementById('noteEditor').addEventListener('input', (e) => {
-    renderMarkdownPreview(e.target.value);
-});
-
-// Guardar nota en localStorage
-document.getElementById('saveNoteBtn').addEventListener('click', () => {
-    const content = document.getElementById('noteEditor').value;
-    const note = { ...testNote, content, updatedAt: Date.now() };
-    saveToStorage([note]); // Guardar en LocalStorage
-    alert('Nota guardada!');
-});
 
 /**
  * Muestra un mensaje de error o exito
  * @param {string} message - Mensaje a mostrar
  * @param {boolean} isError - true si es error, false si es exito
  */
-
 function showMessage(message, isError) {
   const messageContainer = document.querySelector('#message-container');
 
@@ -551,12 +692,11 @@ function showMessage(message, isError) {
  * Inicializa todos los events listeners de la aplicaciopn
  * @param {Object} store - Store de notas
  */
-
 function initializeEventListeners(store) {
   const newNoteButton = document.querySelector('#new-note-button');
 
   newNoteButton.addEventListener('click', () => {
-    renderEditor(null);
+    renderNoteEditor(null);
   });
 
   const saveNoteButton = document.querySelector('#save-note-button');
@@ -567,7 +707,7 @@ function initializeEventListeners(store) {
 
     if (content.trim() === '') {
       showMessage('The content cannot be empty', true);
-      return
+      return;
     }
 
     if (currentNoteId != null) {
@@ -592,5 +732,78 @@ function initializeEventListeners(store) {
         showMessage(result.message, true);
       }
     }
-  })
+  });
+
+  const deleteNoteButton = document.querySelector('#delete-note-button');
+
+  deleteNoteButton.addEventListener('click', () => {
+    if (currentNoteId === null) {
+      showMessage('No note has been selected for deletion', true);
+      // FIX: faltaba un return para cortar la ejecución cuando no hay nota seleccionada
+      return;
+    }
+
+    const confirmed = confirm('Are you sure you want to delete this note?');
+
+    if (confirmed === true) {
+      const result = store.deleteNote(currentNoteId);
+
+      if (result.success === true) {
+        showMessage('Note successfully deleted', false);
+        hideEditorAndPreview();
+        currentNoteId = null;
+        const notes = store.getNotesOrderedByDate();
+        renderNoteList(notes);
+      } else {
+        showMessage(result.message, true);
+      }
+    }
+  });
+
+  // editor textarea -> preview
+  const editorTextarea = document.querySelector('#editor-textarea');
+
+  editorTextarea.addEventListener('input', () => {
+    const content = editorTextarea.value;
+    renderMarkdownPreview(content);
+  });
+
+  // selección desde la lista (event delegation)
+  const noteListContainer = document.querySelector('#note-list');
+
+  noteListContainer.addEventListener('click', (event) => {
+    const noteItem = event.target.closest('.note-item');
+    if (noteItem != null) {
+      const noteId = Number(noteItem.dataset.id);
+      const note = store.getNoteById(noteId);
+      if (note != null) {
+        renderNoteEditor(note);
+        const notes = store.getNotesOrderedByDate();
+        renderNoteList(notes);
+      }
+    }
+  });
 }
+
+/**
+ * Funcion principal que inicializa la aplicacion
+ */
+function initializeApp() {
+  // FIX: se usa createPersistentNotesStore en lugar de createPersistentNoteStore (que no existía)
+  const store = createPersistentNotesStore();
+  // FIX: se corrige getNotesByDate -> getNotesOrderedByDate
+  const notes = store.getNotesOrderedByDate();
+
+  renderNoteList(notes); // si hay notas en local storage.
+  hideEditorAndPreview();
+  // FIX: se corrige initListeners -> initializeEventListeners
+  initializeEventListeners(store);
+
+  console.log('Aplicación inicializada correctamente');
+  // FIX: se corrige store.count() -> store.getNotesCount()
+  console.log('Total de notas cargadas:', store.getNotesCount());
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApp();
+});

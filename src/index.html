@@ -1,25 +1,55 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notes MarkDown</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <h1>Notes MarkDown</h1>
-    <p>App para gestionar notas en formato markdown</p>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema de Notas Markdown</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Sistema de Notas Markdown</h1>
+        <div id="message-container" class="message"></div>
+      </header>
 
-    <h2>Editor de Nota</h2>
-    <textarea id="noteEditor" rows="6" cols="50"></textarea>
+      <div class="main-content">
+        <aside class="sidebar">
+          <div class="sidebar-header">
+            <h2>Mis Notas</h2>
+            <button id="new-note-button" class="btn btn-primary">Nueva Nota</button>
+            <button id="delete-note-button" class="btn btn-danger">Eliminar</button>
+            <button id="export-notes-button" class="btn btn-secondary">Exportar</button>
+          </div>
+          <div id="note-list" class="note-list"></div>
+        </aside>
 
-    <h2>Preview Markdown</h2>
-    <div id="markdownPreview" style="border: 1px solid #ccc; padding: 10px;"></div>
+        <main class="editor-section" id="editor-section" style="display: none">
+          <div class="editor-header">
+            <h2>Editor</h2>
+            <div class="editor-actions">
+              <button id="save-note-button" class="btn btn-success">Guardar</button>
+            </div>
+          </div>
+          <textarea
+            id="editor-textarea"
+            class="editor-textarea"
+            placeholder="Escribe tu nota en Markdown aquí..."
+          ></textarea>
+        </main>
 
-    <button id="loadNoteBtn">Cargar Nota de Prueba</button>
-    <button id="saveNoteBtn">Guardar Nota</button>
+        <section class="preview-section" id="preview-section" style="display: none">
+          <div class="preview-header">
+            <h2>Preview</h2>
+          </div>
+          <div id="preview-container" class="preview-container"></div>
+        </section>
+      </div>
+    </div>
 
+    <!-- FIX: markdown-it se carga primero para que esté disponible cuando app.js lo necesite -->
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/dist/markdown-it.min.js"></script>
+    <!-- FIX: app.js sin type="module" para que las funciones sean globales y DOMContentLoaded funcione correctamente -->
     <script src="app.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-</body>
+  </body>
 </html>
