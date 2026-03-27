@@ -370,7 +370,6 @@ function loadFromStorage() {
 /**
  * Muestra el editor y preview
  */
-
 function showEditorAndPreview() {
   const editorSection = document.querySelector('#editor-section');
   const previewSection = document.querySelector('#preview-section');
@@ -382,7 +381,6 @@ function showEditorAndPreview() {
 /**
  * Oculta el editor y el preview
  */
-
 function hideEditorAndPreview() {
   const editorSection = document.querySelector('#editor-section');
   const previewSection = document.querySelector('#preview-section');
@@ -525,3 +523,74 @@ document.getElementById('saveNoteBtn').addEventListener('click', () => {
     saveToStorage([note]); // Guardar en LocalStorage
     alert('Nota guardada!');
 });
+
+/**
+ * Muestra un mensaje de error o exito
+ * @param {string} message - Mensaje a mostrar
+ * @param {boolean} isError - true si es error, false si es exito
+ */
+
+function showMessage(message, isError) {
+  const messageContainer = document.querySelector('#message-container');
+
+  messageContainer.textContent = message;
+
+  if (isError === true) {
+    messageContainer.className = 'message error';
+  } else {
+    messageContainer.className = 'message success';
+  }
+
+  setTimeout(() => {
+    messageContainer.textContent = '';
+    messageContainer.className = 'message';
+  }, 3000);
+}
+
+/**
+ * Inicializa todos los events listeners de la aplicaciopn
+ * @param {Object} store - Store de notas
+ */
+
+function initializeEventListeners(store) {
+  const newNoteButton = document.querySelector('#new-note-button');
+
+  newNoteButton.addEventListener('click', () => {
+    renderEditor(null);
+  });
+
+  const saveNoteButton = document.querySelector('#save-note-button');
+
+  saveNoteButton.addEventListener('click', () => {
+    const editorTextArea = document.querySelector('#editor-textarea');
+    const content = editorTextArea.value;
+
+    if (content.trim() === '') {
+      showMessage('The content cannot be empty', true);
+      return
+    }
+
+    if (currentNoteId != null) {
+      const result = store.updateNote(currentNoteId, {content: content});
+
+      if (result.success === true) {
+        showMessage('Note successfully updated', false);
+        const notes = store.getNotesOrderedByDate();
+        renderNoteList(notes);
+      } else {
+        showMessage(result.message, true);
+      }
+    } else {
+      const result = store.addNote(content);
+
+      if (result.success === true) {
+        showMessage('Note created successfully', false);
+        currentNoteId = result?.note?.id;
+        const notes = store.getNotesOrderedByDate();
+        renderNoteList(notes);
+      } else {
+        showMessage(result.message, true);
+      }
+    }
+  })
+}
